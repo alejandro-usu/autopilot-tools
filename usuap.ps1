@@ -62,6 +62,10 @@ if ($GroupTag) {
     }
 }
 
+if (-not $AssignedComputerName) {
+    $AssignedComputerName = Read-Host "Enter computer name (leave blank to skip)"
+}
+
 if ($AssignedComputerName) {
     if ($AssignedComputerName.Length -gt 15) {
         Write-Error "Computer name must be 15 characters or fewer."
