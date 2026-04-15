@@ -80,8 +80,10 @@ if ($Reboot -and $Shutdown) {
 
 if (-not (Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue)) {
     Write-Host "Installing NuGet package provider..." -ForegroundColor Cyan
-    Find-PackageProvider -Name NuGet -ForceBootstrap -IncludeDependencies | Out-Null
+    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force | Out-Null
 }
+
+Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
 
 if (-not (Get-Module -Name Microsoft.Graph.Authentication -ListAvailable)) {
     Write-Host "Installing Microsoft.Graph.Authentication module..." -ForegroundColor Cyan
