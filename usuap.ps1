@@ -20,8 +20,15 @@
 .PARAMETER Reboot
     Reboots the computer after completion. Defaults to 10 second delay unless RebootDelay is set
 
+.PARAMETER Shutdown
+    Shuts down the computer after completion. Defaults to 10 second delay unless ShutdownDelay is set.
+    Cannot be used with -Reboot.
+
 .PARAMETER RebootDelay
     Optional for reboot in seconds after successful upload (only applies if -Reboot is specified)
+
+.PARAMETER ShutdownDelay
+    Optional delay in seconds before shutdown (only applies if -Shutdown is specified)
 
 .PARAMETER AutoRemove
     Autoremove the script after successful upload (done regardless if -Reboot is specified)
@@ -30,6 +37,7 @@
     .\get-usuap.ps1 -GroupTag "DPINFT"
     .\get-usuap.ps1 -GroupTag "DPINFT" -AssignedComputerName "CUSTOM-PC-01"
     .\get-usuap.ps1 -GroupTag "DPINFT" -Reboot -RebootDelay 5
+    .\get-usuap.ps1 -GroupTag "DPINFT" -Shutdown
 #>
 
 [CmdletBinding()]
@@ -41,8 +49,11 @@ param(
     [Parameter(Mandatory = $false)]
     [switch]$UseWAM,
     [switch]$Reboot,
+    [switch]$Shutdown,
     [Parameter(Mandatory = $false)]
     [int]$RebootDelay,
+    [Parameter(Mandatory = $false)]
+    [int]$ShutdownDelay,
     [switch]$AutoRemove
 )
 $CLIENT_ID = "87d8aa30-7d13-4f37-8914-ebe8c7097789"
@@ -60,11 +71,16 @@ if ($GroupTag) {
     }
 }
 
+if ($Reboot -and $Shutdown) {
+    Write-Error "Cannot specify both -Reboot and -Shutdown."
+    exit 1
+}
+
 # AssignedComputerName is auto-generated from serial if not provided manually
 
 if (-not (Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue)) {
     Write-Host "Installing NuGet package provider..." -ForegroundColor Cyan
-    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force | Out-Null
+    Find-PackageProvider -Name NuGet -ForceBootstrap -IncludeDependencies | Out-Null
 }
 
 if (-not (Get-Module -Name Microsoft.Graph.Authentication -ListAvailable)) {
@@ -237,7 +253,7 @@ switch ($importStatus) {
             }
         }
 
-        if ($AutoRemove -or $Reboot) {
+        if ($AutoRemove -or $Reboot -or $Shutdown) {
             Remove-Item $PSCommandPath
         }
         if ($Reboot) {
@@ -247,6 +263,14 @@ switch ($importStatus) {
             Write-Host "Rebooting in $RebootDelay seconds..."
             Start-Sleep $RebootDelay
             Restart-Computer
+        }
+        if ($Shutdown) {
+            if (!$ShutdownDelay) {
+                $ShutdownDelay = 10
+            }
+            Write-Host "Shutting down in $ShutdownDelay seconds..."
+            Start-Sleep $ShutdownDelay
+            Stop-Computer
         }
     }
     "error" {
