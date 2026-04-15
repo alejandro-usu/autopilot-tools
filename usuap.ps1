@@ -212,13 +212,12 @@ switch ($importStatus) {
             Write-Host "Setting assigned computer name to '$AssignedComputerName'..." -ForegroundColor Cyan
 
             $autopilotUri = "https://graph.microsoft.com/beta/deviceManagement/windowsAutopilotDeviceIdentities"
-            $filterUri = "${autopilotUri}?`$filter=contains(serialNumber,'$serial')"
+            $filterUri    = "${autopilotUri}?`$filter=contains(serialNumber,'$serial')"
 
-            $retryCount = 0
-            $maxRetries = 3
-            $device     = $null
+            $device      = $null
+            $nameTimeout = [datetime]::UtcNow.AddMinutes(5)
 
-            while ($retryCount -lt $maxRetries -and -not $device) {
+            while (-not $device -and [datetime]::UtcNow -lt $nameTimeout) {
                 try {
                     $device = (Invoke-MgGraphRequest -Method GET -Uri $filterUri -ErrorAction Stop).value | Select-Object -First 1
                 }
@@ -227,11 +226,9 @@ switch ($importStatus) {
                 }
 
                 if (-not $device) {
-                    $retryCount++
-                    if ($retryCount -lt $maxRetries) {
-                        Write-Host "  Waiting for device to appear in Autopilot (attempt $retryCount of $maxRetries)..." -ForegroundColor Gray
-                        Start-Sleep -Seconds 5
-                    }
+                    $remaining = [int]($nameTimeout - [datetime]::UtcNow).TotalSeconds
+                    Write-Host "  Waiting for device to appear in Autopilot... ($remaining`s remaining)" -ForegroundColor Gray
+                    Start-Sleep -Seconds 5
                 }
             }
 
@@ -247,7 +244,7 @@ switch ($importStatus) {
                     Write-Warning "Failed to set computer name: $_`nYou may need to set it manually in Intune."
                 }
             } else {
-                Write-Warning "Could not find Autopilot device with serial '$serial' to set computer name. You may need to set it manually in Intune."
+                Write-Warning "Timed out waiting for device '$serial' to appear in Autopilot. You may need to set the name manually in Intune."
             }
         }
 
