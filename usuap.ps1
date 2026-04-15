@@ -24,6 +24,11 @@
     Shuts down the computer after completion. Defaults to 10 second delay unless ShutdownDelay is set.
     Cannot be used with -Reboot.
 
+.PARAMETER MacAddress
+    Displays the physical Ethernet MAC address and pauses for confirmation before
+    continuing. Use this when you need to register the MAC in a network management
+    portal and re-plug the cable before the upload proceeds.
+
 .PARAMETER RebootDelay
     Optional for reboot in seconds after successful upload (only applies if -Reboot is specified)
 
@@ -38,6 +43,7 @@
     .\get-usuap.ps1 -GroupTag "DPINFT" -AssignedComputerName "CUSTOM-PC-01"
     .\get-usuap.ps1 -GroupTag "DPINFT" -Reboot -RebootDelay 5
     .\get-usuap.ps1 -GroupTag "DPINFT" -Shutdown
+    .\get-usuap.ps1 -GroupTag "DPINFT" -MacAddress -Reboot
 #>
 
 [CmdletBinding()]
@@ -50,6 +56,7 @@ param(
     [switch]$UseWAM,
     [switch]$Reboot,
     [switch]$Shutdown,
+    [switch]$MacAddress,
     [Parameter(Mandatory = $false)]
     [int]$RebootDelay,
     [Parameter(Mandatory = $false)]
@@ -133,6 +140,17 @@ if ([string]::IsNullOrWhiteSpace($hardwareHash)) {
     exit 1
 }
 
+# Get the physical Ethernet adapter MAC address if requested
+if ($MacAddress) {
+    $ethernetAdapter = Get-NetAdapter -Physical | Where-Object { $_.MediaType -eq '802.3' } | Select-Object -First 1
+    if ($ethernetAdapter) {
+        $macAddr = $ethernetAdapter.MacAddress
+    } else {
+        $macAddr = "NOT FOUND"
+        Write-Warning "No physical Ethernet adapter detected."
+    }
+}
+
 # Auto-generate computer name from serial if not manually provided
 if (-not $AssignedComputerName) {
     $prefix = "DPCLAS-"
@@ -142,9 +160,19 @@ if (-not $AssignedComputerName) {
     Write-Host "  Auto-generated computer name from serial number." -ForegroundColor Cyan
 }
 
-Write-Host "  Serial number : $serial" -ForegroundColor Gray
-if ($GroupTag)            { Write-Host "  Group tag     : $GroupTag"            -ForegroundColor Gray }
-Write-Host "  Computer name : $AssignedComputerName" -ForegroundColor Gray
+Write-Host ""
+Write-Host "  ============================================" -ForegroundColor White
+Write-Host "  Serial number : $serial"                       -ForegroundColor White
+if ($MacAddress) { Write-Host "  MAC address   : $macAddr"   -ForegroundColor White }
+Write-Host "  Computer name : $AssignedComputerName"         -ForegroundColor White
+if ($GroupTag) { Write-Host "  Group tag     : $GroupTag"    -ForegroundColor White }
+Write-Host "  ============================================" -ForegroundColor White
+Write-Host ""
+
+if ($MacAddress) {
+    Write-Host "Register the MAC address above, then re-plug the network cable." -ForegroundColor Yellow
+    Read-Host "Press Enter when ready to continue"
+}
 
 $importUri = "https://graph.microsoft.com/beta/deviceManagement/importedWindowsAutopilotDeviceIdentities"
 
