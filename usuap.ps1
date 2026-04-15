@@ -78,12 +78,8 @@ if ($Reboot -and $Shutdown) {
 
 # AssignedComputerName is auto-generated from serial if not provided manually
 
-if (-not (Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue)) {
-    Write-Host "Installing NuGet package provider..." -ForegroundColor Cyan
-    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force | Out-Null
-}
-
-Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -ErrorAction SilentlyContinue | Out-Null
 
 if (-not (Get-Module -Name Microsoft.Graph.Authentication -ListAvailable)) {
     Write-Host "Installing Microsoft.Graph.Authentication module..." -ForegroundColor Cyan
@@ -216,7 +212,7 @@ switch ($importStatus) {
             Write-Host "Setting assigned computer name to '$AssignedComputerName'..." -ForegroundColor Cyan
 
             $autopilotUri = "https://graph.microsoft.com/beta/deviceManagement/windowsAutopilotDeviceIdentities"
-            $filterUri    = "${autopilotUri}?`$filter=contains(serialNumber,'$serial')"
+            $filterUri    = "${autopilotUri}?`$filter=serialNumber eq '$serial'"
 
             $retryCount = 0
             $maxRetries = 3
