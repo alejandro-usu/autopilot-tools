@@ -11,8 +11,8 @@
     Optional group tag to apply to the Autopilot device record.
 
 .PARAMETER AssignedComputerName
-    Optional computer name to assign to the device after Autopilot import completes.
-    Must be 15 characters or fewer, alphanumeric with hyphens allowed (not at start or end).
+    Optional override for the computer name. If not provided, the name is
+    automatically generated as DPCLAS-<SerialNumber> (truncated to 15 chars).
 
 .PARAMETER UseWAM
     Re-enables the new method of signing in, which allows for use of security keys, but shows that bothersome all apps page that messes with enrollment.
@@ -27,10 +27,8 @@
     Autoremove the script after successful upload (done regardless if -Reboot is specified)
 
 .EXAMPLE
-    .\get-usuap.ps1
     .\get-usuap.ps1 -GroupTag "DPINFT"
-    .\get-usuap.ps1 -GroupTag "DPINFT" -AssignedComputerName "LAB-PC-042"
-    .\get-usuap.ps1 -GroupTag "DPINFT" -AssignedComputerName "LAB-PC-042" -AutoRemove
+    .\get-usuap.ps1 -GroupTag "DPINFT" -AssignedComputerName "CUSTOM-PC-01"
     .\get-usuap.ps1 -GroupTag "DPINFT" -Reboot -RebootDelay 5
 #>
 
@@ -62,27 +60,7 @@ if ($GroupTag) {
     }
 }
 
-if (-not $AssignedComputerName) {
-    $AssignedComputerName = Read-Host "Enter computer name (leave blank to skip)"
-}
-
-if ($AssignedComputerName) {
-    if ($AssignedComputerName.Length -gt 15) {
-        Write-Error "Computer name must be 15 characters or fewer."
-        exit 1
-    }
-    if ($AssignedComputerName.Length -eq 1) {
-        if ($AssignedComputerName -notmatch '^[a-zA-Z0-9]$') {
-            Write-Error "Computer name must be alphanumeric (hyphens allowed, not at start or end)."
-            exit 1
-        }
-    } else {
-        if ($AssignedComputerName -notmatch '^[a-zA-Z0-9][a-zA-Z0-9-]{0,13}[a-zA-Z0-9]$') {
-            Write-Error "Computer name must be alphanumeric (hyphens allowed, not at start or end)."
-            exit 1
-        }
-    }
-}
+# AssignedComputerName is auto-generated from serial if not provided manually
 
 if (-not (Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue)) {
     Write-Host "Installing NuGet package provider..." -ForegroundColor Cyan
@@ -139,9 +117,18 @@ if ([string]::IsNullOrWhiteSpace($hardwareHash)) {
     exit 1
 }
 
+# Auto-generate computer name from serial if not manually provided
+if (-not $AssignedComputerName) {
+    $prefix = "DPCLAS-"
+    $maxSerial = 15 - $prefix.Length  # 8 characters left for serial
+    $truncatedSerial = $serial.Substring(0, [Math]::Min($serial.Length, $maxSerial))
+    $AssignedComputerName = "$prefix$truncatedSerial"
+    Write-Host "  Auto-generated computer name from serial number." -ForegroundColor Cyan
+}
+
 Write-Host "  Serial number : $serial" -ForegroundColor Gray
 if ($GroupTag)            { Write-Host "  Group tag     : $GroupTag"            -ForegroundColor Gray }
-if ($AssignedComputerName) { Write-Host "  Computer name : $AssignedComputerName" -ForegroundColor Gray }
+Write-Host "  Computer name : $AssignedComputerName" -ForegroundColor Gray
 
 $importUri = "https://graph.microsoft.com/beta/deviceManagement/importedWindowsAutopilotDeviceIdentities"
 
