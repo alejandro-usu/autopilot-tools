@@ -212,7 +212,7 @@ switch ($importStatus) {
             Write-Host "Setting assigned computer name to '$AssignedComputerName'..." -ForegroundColor Cyan
 
             $autopilotUri = "https://graph.microsoft.com/beta/deviceManagement/windowsAutopilotDeviceIdentities"
-            $filterUri    = "${autopilotUri}?`$filter=serialNumber eq '$serial'"
+            $filterUri = "${autopilotUri}?`$filter=contains(serialNumber,'$serial')"
 
             $retryCount = 0
             $maxRetries = 3
