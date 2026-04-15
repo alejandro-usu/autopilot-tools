@@ -64,7 +64,7 @@ if ($GroupTag) {
 
 if (-not (Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue)) {
     Write-Host "Installing NuGet package provider..." -ForegroundColor Cyan
-    Find-PackageProvider -Name NuGet -ForceBootstrap -IncludeDependencies | Out-Null
+    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force | Out-Null
 }
 
 if (-not (Get-Module -Name Microsoft.Graph.Authentication -ListAvailable)) {
