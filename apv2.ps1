@@ -20,6 +20,14 @@
     Optional computer name to assign to the device after Autopilot import
     completes. Must be 15 characters or fewer, alphanumeric with hyphens
     allowed (not at start or end). If not specified, no name is assigned.
+    Cannot be used with -AssignedPrefix.
+
+.PARAMETER AssignedPrefix
+    Optional prefix for auto-generating a computer name. The script will
+    append "-<SerialNumber>" to the prefix, truncated to fit the 15
+    character Windows limit. For example, -AssignedPrefix "DPINFT" on a
+    device with serial ABC12345 produces "DPINFT-ABC12345".
+    Cannot be used with -AssignedComputerName.
 
 .PARAMETER UseWAM
     Re-enables the new method of signing in, which allows for use of
@@ -48,6 +56,8 @@
     .\usuap.ps1 -GroupTag "DPINFT"
     .\usuap.ps1 -GroupTag "Lab-DPINFT"
     .\usuap.ps1 -GroupTag "Shared-DPINFT" -AssignedComputerName "DPINFT-Lab-01"
+    .\usuap.ps1 -GroupTag "DPINFT" -AssignedPrefix "DPINFT"
+    .\usuap.ps1 -GroupTag "DPINFT" -AssignedPrefix "LAB"
     .\usuap.ps1 -GroupTag "DPINFT" -Reboot -RebootDelay 5
     .\usuap.ps1 -GroupTag "DPINFT" -Shutdown
     .\usuap.ps1 -GroupTag "SomeDifferentTag" -OverrideGroupTag
@@ -60,6 +70,8 @@ param(
     [switch]$OverrideGroupTag,
     [Parameter(Mandatory = $false)]
     [string]$AssignedComputerName = "",
+    [Parameter(Mandatory = $false)]
+    [string]$AssignedPrefix = "",
     [Parameter(Mandatory = $false)]
     [switch]$UseWAM,
     [switch]$Reboot,
@@ -110,6 +122,11 @@ if ($GroupTag -and -not $OverrideGroupTag) {
     }
 }
 
+if ($AssignedComputerName -and $AssignedPrefix) {
+    Write-Error "Cannot specify both -AssignedComputerName and -AssignedPrefix. Use one or the other."
+    exit 1
+}
+
 if ($AssignedComputerName) {
     if ($AssignedComputerName.Length -gt 15) {
         Write-Error "Computer name must be 15 characters or fewer."
@@ -125,6 +142,18 @@ if ($AssignedComputerName) {
             Write-Error "Computer name must be alphanumeric (hyphens allowed, not at start or end)."
             exit 1
         }
+    }
+}
+
+if ($AssignedPrefix) {
+    # Prefix + "-" must leave at least 1 character for the serial
+    if (($AssignedPrefix.Length + 1) -ge 15) {
+        Write-Error "AssignedPrefix is too long. Prefix plus '-' must leave room for the serial number (15 char max)."
+        exit 1
+    }
+    if ($AssignedPrefix -notmatch '^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]$' -and $AssignedPrefix.Length -gt 1) {
+        Write-Error "AssignedPrefix must be alphanumeric (hyphens allowed, not at start or end)."
+        exit 1
     }
 }
 
@@ -189,9 +218,18 @@ if ([string]::IsNullOrWhiteSpace($hardwareHash)) {
     exit 1
 }
 
+# --- Auto-generate computer name from prefix if provided ----------------------
+if ($AssignedPrefix) {
+    $fullPrefix = "$AssignedPrefix-"
+    $maxSerial  = 15 - $fullPrefix.Length
+    $truncatedSerial = $serial.Substring(0, [Math]::Min($serial.Length, $maxSerial))
+    $AssignedComputerName = "$fullPrefix$truncatedSerial"
+    Write-USU "  Auto-generated computer name: $AssignedComputerName" -ForegroundColor Cyan
+}
+
 # --- Display device info ------------------------------------------------------
 Write-USU "  Serial number : $serial" -ForegroundColor Gray
-if ($GroupTag)            { Write-USU "  Group tag     : $GroupTag"            -ForegroundColor Gray }
+if ($GroupTag)             { Write-USU "  Group tag     : $GroupTag"             -ForegroundColor Gray }
 if ($AssignedComputerName) { Write-USU "  Computer name : $AssignedComputerName" -ForegroundColor Gray }
 
 # --- Upload to Autopilot ------------------------------------------------------
