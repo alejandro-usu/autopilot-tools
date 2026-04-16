@@ -1,0 +1,67 @@
+REM ================================================================
+REM  FlipperAutopilot.txt - Flipper Zero BadUSB Payload
+REM  USU Autopilot Enrollment with Network Registration
+REM ================================================================
+REM
+REM  WHAT THIS DOES:
+REM  1. Opens CMD from Windows OOBE (Shift+F10)
+REM  2. Focuses the CMD window (Ctrl+Alt+Tab task switcher)
+REM  3. Launches PowerShell
+REM  4. Displays device info for Bluezone network registration:
+REM     - Ethernet MAC address
+REM     - Hostname (dpclas-SERIAL.bluezone.usu.edu)
+REM     - Computer model
+REM     - Serial number
+REM  5. Restarts the network adapter every 8 seconds until
+REM     a valid USU IP (129.123.x.x) is assigned
+REM  6. Downloads and runs the Autopilot enrollment script
+REM  7. Shuts down the computer when done
+REM
+REM  PREREQUISITES:
+REM  - Computer must be at the OOBE screen
+REM  - Ethernet cable should be plugged in
+REM  - You need access to the Bluezone portal to register the MAC
+REM  - usuap.ps1 must be hosted at the GitHub Pages URL below
+REM
+REM ================================================================
+
+DEFAULT_STRING_DELAY 10
+
+REM --- STEP 1: Open CMD from OOBE ---
+SHIFT F10
+DELAY 3000
+
+REM --- STEP 2: Focus CMD window ---
+REM CTRL+ALT+TAB opens persistent task switcher (no held keys)
+REM RIGHT arrow selects CMD, ENTER switches to it
+REM If CMD is to the LEFT on some machines, swap RIGHT for LEFT
+CTRL ALT TAB
+DELAY 1000
+RIGHT
+DELAY 500
+ENTER
+DELAY 2000
+
+REM --- STEP 3: Launch PowerShell ---
+STRING powershell -ep bypass
+DELAY 300
+ENTER
+DELAY 3000
+
+REM --- STEP 4: Main command chain ---
+REM This is one long chained PowerShell command (semicolon-separated).
+REM PowerShell executes it sequentially. The adapter restart loop blocks
+REM until a valid IP appears, then continues to download and run the script.
+REM
+REM HARDCODED VALUES TO CHANGE:
+REM   - "dpclas-" ............ Hostname prefix for Bluezone registration
+REM   - ".bluezone.usu.edu" .. Hostname suffix for Bluezone registration
+REM   - "129.123.*" .......... USU IP range to wait for
+REM   - GitHub URL ........... Where usuap.ps1 is hosted
+REM   - "-GroupTag" .......... Autopilot group tag (change per department)
+REM   - "-Shutdown" .......... Change to "-Reboot" if you want it to restart
+REM                            Remove entirely to leave the computer on
+REM
+STRING $a=Get-NetAdapter -Physical|?{$_.MediaType -eq '802.3'}|Select -First 1; $s=(Get-WmiObject Win32_BIOS).SerialNumber.Trim(); $m=(Get-WmiObject Win32_ComputerSystem).Model; Write-Host "`n  $($a.MacAddress)" -Fo White; Write-Host "  dpclas-$s.bluezone.usu.edu" -Fo White; Write-Host "  $m" -Fo White; Write-Host "  Serial: $s`n" -Fo White; Write-Host "Register MAC address." -Fo Yellow; Write-Host "Restarting network adapter and waiting for valid IP address (129.123.x.x)..." -Fo Yellow; do { Restart-NetAdapter -Name $a.Name -Confirm:$false; Start-Sleep 8; $ip=(Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue|?{$_.IPAddress -like '129.123.*'}|Select -First 1) } until ($ip); Write-Host "  Connected: $($ip.IPAddress)`n" -Fo Green; irm https://alejandro-usu.github.io/autopilot-tools/usuap.ps1 -outfile usuap.ps1; & ./usuap.ps1 -GroupTag "Class-DPCLAS-Lgn" -Shutdown
+DELAY 300
+ENTER
