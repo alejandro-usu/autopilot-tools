@@ -82,20 +82,25 @@ param(
     [int]$ShutdownDelay,
     [switch]$AutoRemove,
     [Alias("1888")]
-    [switch]$GoAggies
+    [switch]$GoAggies,
+    [Alias("hehe")]
+    [switch]$Rainbow
 )
 $CLIENT_ID = "87d8aa30-7d13-4f37-8914-ebe8c7097789"
 $TENANT_ID = "ac352f9b-eb63-4ca2-9cf9-f4c40047ceff"
 
-# --- Easter egg: USU themed output -------------------------------------------
+# --- Easter egg: themed output ------------------------------------------------
 $script:MockIndex = 0
 function Write-USU {
     param(
         [string]$Text,
         [string]$ForegroundColor = "White"
     )
-    if ($GoAggies) {
-        $usuColors = @("DarkBlue", "Blue", "DarkCyan", "Cyan", "White")
+    if ($GoAggies -or $Rainbow) {
+        $usuColors     = @("DarkBlue", "Blue", "DarkCyan", "Cyan", "White")
+        $rainbowColors = @("Red", "DarkYellow", "Yellow", "Green", "Cyan", "Blue", "Magenta")
+        $palette = if ($Rainbow) { $rainbowColors } else { $usuColors }
+
         $mocked = -join ($Text.ToCharArray() | ForEach-Object {
             $script:MockIndex++
             if ($_ -match '[a-zA-Z]') {
@@ -103,8 +108,20 @@ function Write-USU {
                 else { $_.ToString().ToLower() }
             } else { $_ }
         })
-        $color = $usuColors[$script:MockIndex % $usuColors.Count]
-        Write-Host $mocked -ForegroundColor $color
+
+        # Rainbow prints each character in a different color
+        if ($Rainbow) {
+            $i = 0
+            foreach ($char in $mocked.ToCharArray()) {
+                $color = $palette[$i % $palette.Count]
+                Write-Host $char -ForegroundColor $color -NoNewline
+                if ($char -match '\S') { $i++ }
+            }
+            Write-Host ""
+        } else {
+            $color = $palette[$script:MockIndex % $palette.Count]
+            Write-Host $mocked -ForegroundColor $color
+        }
     } else {
         Write-Host $Text -ForegroundColor $ForegroundColor
     }
@@ -300,6 +317,17 @@ switch ($importStatus) {
             Write-Host ""
             Write-Host "  gO aGgIeS!!!" -ForegroundColor Blue
             Write-Host ""
+        }
+        if ($Rainbow) {
+            $msg = "  yAy It WoRkEd!!!"
+            $rainbowColors = @("Red", "DarkYellow", "Yellow", "Green", "Cyan", "Blue", "Magenta")
+            Write-Host ""
+            $i = 0
+            foreach ($char in $msg.ToCharArray()) {
+                Write-Host $char -ForegroundColor $rainbowColors[$i % $rainbowColors.Count] -NoNewline
+                if ($char -match '\S') { $i++ }
+            }
+            Write-Host "`n"
         }
 
         # --- Set computer name if provided ------------------------------------
