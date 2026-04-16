@@ -7,7 +7,7 @@ REM  WHAT THIS DOES:
 REM  1. Opens CMD from Windows OOBE (Shift+F10)
 REM  2. Focuses the CMD window (Ctrl+Alt+Tab task switcher)
 REM  3. Launches PowerShell
-REM  4. Displays device info for Bluezone network registration:
+REM  4. Displays device info for openIPAM network registration:
 REM     - Ethernet MAC address
 REM     - Hostname (dpclas-SERIAL.bluezone.usu.edu)
 REM     - Computer model
@@ -20,7 +20,7 @@ REM
 REM  PREREQUISITES:
 REM  - Computer must be at the OOBE screen
 REM  - Ethernet cable should be plugged in
-REM  - You need access to the Bluezone portal to register the MAC
+REM  - You need access to the openIPAM portal to register the MAC
 REM  - usuap.ps1 must be hosted at the GitHub Pages URL below
 REM
 REM ================================================================
@@ -54,8 +54,8 @@ REM PowerShell executes it sequentially. The adapter restart loop blocks
 REM until a valid IP appears, then continues to download and run the script.
 REM
 REM HARDCODED VALUES TO CHANGE:
-REM   - "dpclas-" ............ Hostname prefix for Bluezone registration
-REM   - ".bluezone.usu.edu" .. Hostname suffix for Bluezone registration
+REM   - "dpclas-" ............ Hostname prefix for openIPAM registration
+REM   - ".bluezone.usu.edu" .. Hostname suffix for openIPAM registration
 REM   - "129.123.*" .......... USU IP range to wait for
 REM   - GitHub URL ........... Where usuap.ps1 is hosted
 REM   - "-GroupTag" .......... Autopilot group tag (change per department)
